@@ -6,15 +6,17 @@ RUN apt-get update && apt-get install -y nmap && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Copy package files and install
+# Copy package files and prisma schema
 COPY package*.json ./
+COPY prisma ./prisma/
+
+# Install dependencies (will trigger prisma generate via postinstall)
 RUN npm install
 
-# Copy source and build
+# Copy the rest of the source code
 COPY . .
 
-# Generate Prisma client and build the Next.js app
-RUN npx prisma generate
+# Build the Next.js app
 RUN npm run build
 
 # Port 8765
