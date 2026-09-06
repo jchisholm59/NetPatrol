@@ -25,6 +25,8 @@ NMAP_PATH="nmap"
 
 ### 3. Running the App
 ```bash
+npm install
+npx prisma db push
 npm run dev
 ```
 Access the dashboard at: [http://localhost:8765](http://localhost:8765)
@@ -95,6 +97,7 @@ sudo npm install -g pm2
 ```bash
 cd /path/to/NetPatrol
 npm install
+npx prisma db push
 npm run build
 pm2 start npm --name "netpatrol" -- start
 ```

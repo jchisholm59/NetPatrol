@@ -43,7 +43,7 @@ function parseGrepable(output: string): DiscoveredDevice[] {
 }
 
 /**
- * Fallback to 'arp -a' to find MAC addresses
+ * Robust ARP table parsing for both macOS and Linux
  */
 function getArpTable(): Record<string, string> {
   const table: Record<string, string> = {};
@@ -51,14 +51,24 @@ function getArpTable(): Record<string, string> {
     const { execSync } = require('child_process');
     const output = execSync('arp -a').toString();
     const lines = output.split('\n');
+
     lines.forEach((line: string) => {
+      // Format 1: ? (192.168.0.1) at 9c:a2:f4:40:2a:93 on en0 (macOS / some Linux)
       const ipMatch = line.match(/\((.*?)\)/);
-      const macMatch = line.match(/at (.*?) on/);
+      const macMatch = line.match(/at ([:a-fA-F\d]{11,17})/);
+
+      // Format 2: 192.168.0.1  ether  9c:a2:f4:40:2a:93  C  eth0 (Standard Linux)
+      const linuxMatch = line.match(/^([\d.]+)\s+.*?([:a-fA-F\d]{11,17})/);
+
       if (ipMatch && macMatch && macMatch[1] !== '(incomplete)') {
         table[ipMatch[1]] = macMatch[1];
+      } else if (linuxMatch) {
+        table[linuxMatch[1]] = linuxMatch[2];
       }
     });
-  } catch (e) {}
+  } catch (e) {
+    console.warn('[Scanner] ARP lookup failed:', e);
+  }
   return table;
 }
 
@@ -70,12 +80,10 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 async function getVendorFromApi(mac: string): Promise<string | undefined> {
   if (!mac || mac === '??:??:??:??:??:??' || mac.includes('Local')) return undefined;
 
-  // Try MacVendors (Primary)
   try {
     const res = await fetch(`https://api.macvendors.com/${encodeURIComponent(mac)}`);
     if (res.ok) return await res.text();
 
-    // If rate limited (429), wait and try MacLookup (Secondary)
     if (res.status === 429) {
       await sleep(1000);
       const res2 = await fetch(`https://api.maclookup.app/v2/macs/${encodeURIComponent(mac)}`);
@@ -93,32 +101,24 @@ export async function scanSubnet(range: string): Promise<DiscoveredDevice[]> {
   console.log(`[Scanner] Discovery scan on ${range}...`);
 
   try {
-    const { stdout } = await execAsync(`${nmapPath} -sn -T4 -oG - ${range}`);
+    // On Linux, we check if we can run as root to get MACs directly
+    let command = `${nmapPath} -sn -T4 -oG - ${range}`;
+
+    const { stdout } = await execAsync(command);
     const devices = parseGrepable(stdout);
     const arpTable = getArpTable();
 
-    const enrichedDevices: DiscoveredDevice[] = [];
-
-    // Process vendors sequentially with a small delay to respect API limits
-    for (const d of devices) {
+    const results = await Promise.all(devices.map(async (d) => {
       const mac = arpTable[d.ip];
-      let vendor = undefined;
-
-      if (mac) {
-        console.log(`[Scanner] Looking up vendor for ${mac}...`);
-        vendor = await getVendorFromApi(mac);
-        // Wait 500ms between each external API call
-        if (vendor) await sleep(500);
-      }
-
-      enrichedDevices.push({
+      const vendor = mac ? await getVendorFromApi(mac) : undefined;
+      return {
         ...d,
         mac: mac || undefined,
         vendor: vendor
-      });
-    }
+      };
+    }));
 
-    return enrichedDevices;
+    return results;
   } catch (error) {
     console.error('[Scanner] Discovery failed:', error);
     throw error;
