@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  netpatrol:
+    build: .
+    container_name: netpatrol
+    restart: always
+    # CRITICAL: Host networking is required for nmap to see the local network
+    network_mode: host
+    volumes:
+      - ./prisma/dev.db:/app/prisma/dev.db
+    env_file:
+      - .env
