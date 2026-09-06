@@ -27,3 +27,18 @@ export async function PATCH(request: Request) {
   });
   return NextResponse.json(device);
 }
+
+export async function DELETE(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get('id');
+  if (!id) return NextResponse.json({ error: 'ID is required' }, { status: 400 });
+
+  try {
+    await prisma.device.delete({
+      where: { id },
+    });
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return NextResponse.json({ error: 'Failed to delete device' }, { status: 500 });
+  }
+}

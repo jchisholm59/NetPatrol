@@ -39,6 +39,7 @@ Access the dashboard at: [http://localhost:8765](http://localhost:8765)
 - **Subnet Tabs**: Add multiple subnets (e.g., `192.168.1.0/24`) and view them as independent pages.
 - **Fast Scanning**: Uses optimized Nmap flags for rapid host discovery.
 - **MAC & Vendor Detection**: Integrated ARP table fallback to identify hardware manufacturers even without root privileges.
+- **Device Management**: Remove devices that are no longer on the network using the **Trash** icon. (Note: They will reappear if detected in a future scan).
 
 ### 🔍 Deep Probing (The Info Icon)
 - Clicking the **(i)** icon on any device triggers a "Snappy Probe."

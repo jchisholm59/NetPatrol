@@ -11,7 +11,8 @@ import {
   Plus,
   RefreshCw,
   Cpu,
-  Monitor
+  Monitor,
+  Trash2
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -192,6 +193,21 @@ export default function Dashboard() {
       }
     } catch (e) {
       alert('Error deleting subnet.');
+    }
+  };
+
+  const handleDeleteDevice = async (id: string, ip: string) => {
+    if (!confirm(`Are you sure you want to remove device ${ip} from the list? It will reappear if discovered in the next scan.`)) return;
+
+    try {
+      const res = await fetch(`/api/devices?id=${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        if (activeSubnet) fetchDevices(activeSubnet.id);
+      } else {
+        alert('Failed to delete device.');
+      }
+    } catch (e) {
+      alert('Error deleting device.');
     }
   };
 
@@ -409,6 +425,13 @@ export default function Dashboard() {
                           title={probingIp === d.ip ? 'Probing...' : 'Deep Probe'}
                         >
                           {probingIp === d.ip ? <RefreshCw className="animate-spin" size={16} /> : <Info size={16} />}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteDevice(d.id, d.ip)}
+                          className="p-2 hover:bg-destructive/10 text-muted-foreground hover:text-destructive rounded-full transition"
+                          title="Remove Device"
+                        >
+                          <Trash2 size={16} />
                         </button>
                       </div>
                     </td>
