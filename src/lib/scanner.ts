@@ -43,32 +43,43 @@ function parseGrepable(output: string): DiscoveredDevice[] {
 }
 
 /**
- * Robust ARP table parsing for both macOS and Linux
+ * Robust ARP table parsing for both macOS and Linux.
+ * Handles:
+ * - ? (192.168.0.1) at 9c:a2:f4:40:2a:93 on en0 [macOS]
+ * - gateway (192.168.0.1) at 9c:a2:f4:40:2a:93 [ether] on eth0 [Linux]
+ * - 192.168.0.1 dev eth0 lladdr 9c:a2:f4:40:2a:93 REACHABLE [ip neigh]
  */
 function getArpTable(): Record<string, string> {
   const table: Record<string, string> = {};
+  const { execSync } = require('child_process');
+
+  // Try 'arp -a'
   try {
-    const { execSync } = require('child_process');
     const output = execSync('arp -a').toString();
     const lines = output.split('\n');
-
     lines.forEach((line: string) => {
-      // Format 1: ? (192.168.0.1) at 9c:a2:f4:40:2a:93 on en0 (macOS / some Linux)
-      const ipMatch = line.match(/\((.*?)\)/);
-      const macMatch = line.match(/at ([:a-fA-F\d]{11,17})/);
-
-      // Format 2: 192.168.0.1  ether  9c:a2:f4:40:2a:93  C  eth0 (Standard Linux)
-      const linuxMatch = line.match(/^([\d.]+)\s+.*?([:a-fA-F\d]{11,17})/);
-
-      if (ipMatch && macMatch && macMatch[1] !== '(incomplete)') {
-        table[ipMatch[1]] = macMatch[1];
-      } else if (linuxMatch) {
-        table[linuxMatch[1]] = linuxMatch[2];
+      const ipMatch = line.match(/\(([\d.]+)\)/);
+      const macMatch = line.match(/([a-fA-F\d]{1,2}:[a-fA-F\d]{1,2}:[a-fA-F\d]{1,2}:[a-fA-F\d]{1,2}:[a-fA-F\d]{1,2}:[a-fA-F\d]{1,2})/);
+      if (ipMatch && macMatch) {
+        table[ipMatch[1]] = macMatch[1].toLowerCase();
       }
     });
-  } catch (e) {
-    console.warn('[Scanner] ARP lookup failed:', e);
-  }
+  } catch (e) {}
+
+  // Try 'ip neigh' as fallback if 'arp' was limited
+  try {
+    const output = execSync('ip neigh show').toString();
+    const lines = output.split('\n');
+    lines.forEach((line: string) => {
+      const parts = line.split(/\s+/);
+      const ip = parts[0];
+      const macIndex = parts.indexOf('lladdr') + 1;
+      if (ip.match(/^[\d.]+$/) && macIndex > 0 && parts[macIndex]) {
+        table[ip] = parts[macIndex].toLowerCase();
+      }
+    });
+  } catch (e) {}
+
   return table;
 }
 
@@ -98,17 +109,45 @@ async function getVendorFromApi(mac: string): Promise<string | undefined> {
 
 export async function scanSubnet(range: string): Promise<DiscoveredDevice[]> {
   const nmapPath = process.env.NMAP_PATH || 'nmap';
-  console.log(`[Scanner] Discovery scan on ${range}...`);
+  const isRoot = process.getuid && process.getuid() === 0;
+
+  console.log(`[Scanner] Discovery scan on ${range} (Running as root: ${isRoot})...`);
 
   try {
-    // On Linux, we check if we can run as root to get MACs directly
-    let command = `${nmapPath} -sn -T4 -oG - ${range}`;
+    // If we are root, nmap -sn on Linux/macOS will actually get MAC addresses and Vendors natively!
+    // We use -oX for the most detailed output when root.
+    if (isRoot) {
+      const { stdout } = await execAsync(`${nmapPath} -sn ${range} -oX -`);
+      const results: DiscoveredDevice[] = [];
 
-    const { stdout } = await execAsync(command);
+      // Simple regex parser for XML to avoid adding another heavy library
+      const hosts = stdout.split('<host ');
+      hosts.shift(); // First part is header
+
+      for (const hostContent of hosts) {
+        const ipMatch = hostContent.match(/addr="([\d.]+)" addrtype="ipv4"/);
+        const macMatch = hostContent.match(/addr="([:A-F\d]+)" addrtype="mac"/);
+        const vendorMatch = hostContent.match(/vendor="(.*?)"/);
+        const hostNameMatch = hostContent.match(/name="(.*?)"/);
+
+        if (ipMatch && ipMatch[1] !== '127.0.0.1') {
+          results.push({
+            ip: ipMatch[1],
+            mac: macMatch ? macMatch[1].toLowerCase() : undefined,
+            vendor: vendorMatch ? vendorMatch[1] : undefined,
+            hostname: hostNameMatch ? hostNameMatch[1] : undefined
+          });
+        }
+      }
+      return results;
+    }
+
+    // Non-root fallback logic
+    const { stdout } = await execAsync(`${nmapPath} -sn -T4 -oG - ${range}`);
     const devices = parseGrepable(stdout);
     const arpTable = getArpTable();
 
-    const results = await Promise.all(devices.map(async (d) => {
+    const enrichedResults = await Promise.all(devices.map(async (d) => {
       const mac = arpTable[d.ip];
       const vendor = mac ? await getVendorFromApi(mac) : undefined;
       return {
@@ -118,7 +157,7 @@ export async function scanSubnet(range: string): Promise<DiscoveredDevice[]> {
       };
     }));
 
-    return results;
+    return enrichedResults;
   } catch (error) {
     console.error('[Scanner] Discovery failed:', error);
     throw error;
