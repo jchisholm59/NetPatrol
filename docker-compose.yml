@@ -3,9 +3,11 @@ services:
     build: .
     container_name: netpatrol
     restart: always
-    # CRITICAL: Host networking and privileged mode ensure nmap has full visibility
+    # Host networking and privileged mode ensure nmap has full visibility
     network_mode: host
     privileged: true
+    environment:
+      - DATABASE_URL=file:/app/prisma/dev.db
     volumes:
       - netpatrol_db:/app/prisma
     env_file:
