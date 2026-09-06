@@ -130,6 +130,12 @@ Docker for Mac uses a virtual machine, so `network_mode: host` **will not work**
 Ensure **Docker** and **Docker Compose** are installed on your Linux box.
 
 ### 2. Start the Container
+Before starting, ensure you have initialized your database file on the host:
+```bash
+npx prisma db push
+```
+
+Then build and start:
 ```bash
 cd /path/to/NetPatrol
 docker-compose up -d --build

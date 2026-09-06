@@ -7,5 +7,7 @@ services:
     network_mode: host
     volumes:
       - ./prisma/dev.db:/app/prisma/dev.db
+    environment:
+      - DATABASE_URL=file:/app/prisma/dev.db
     env_file:
       - .env
