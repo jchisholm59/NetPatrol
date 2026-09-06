@@ -1,0 +1,18 @@
+services:
+  netpatrol:
+    build: .
+    container_name: netpatrol
+    restart: always
+    # CRITICAL: Host networking and privileged mode ensure nmap has full visibility
+    network_mode: host
+    privileged: true
+    environment:
+      # Force the container to use its internal volume path
+      - DATABASE_URL=file:/app/data/dev.db
+    volumes:
+      - netpatrol_data:/app/data
+    env_file:
+      - .env
+
+volumes:
+  netpatrol_data:

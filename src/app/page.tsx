@@ -116,13 +116,14 @@ export default function Dashboard() {
       const error = await res.json();
       console.error('Subnet addition failed:', error);
 
-      if (error.error?.includes('already exists')) {
-        // If it already exists, let's try to find it in the list and select it
+      // Final Truth Unmasked: Showing actual database errors
+      if (error.error?.includes('readonly') || error.error?.includes('permission')) {
+        alert('SYSTEM ERROR: Database is locked or Read-Only. Please run: sudo chown -R jim:jim ~/NetPatrol');
+      } else if (error.error?.includes('already exists') || error.code === 'P2002') {
         alert('This subnet is already in the database. Selecting it now...');
         await fetchSubnets();
-        // The selection will happen automatically in fetchSubnets logic or manually here
       } else {
-        alert(error.error || 'Failed to add subnet');
+        alert('Failed: ' + (error.error || 'Check server logs'));
       }
     }
   };

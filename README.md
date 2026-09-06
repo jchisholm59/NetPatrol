@@ -119,5 +119,26 @@ sudo chmod u+s /usr/bin/nmap
 
 ---
 
+## 🐳 Docker Deployment (Optional)
+
+Running NetPatrol in Docker is the most isolated and clean way to deploy on Linux.
+
+### ⚠️ Important Note
+Docker for Mac uses a virtual machine, so `network_mode: host` **will not work** on macOS. This deployment method is intended for **Linux hosts only**.
+
+### 1. Requirements
+Ensure **Docker** and **Docker Compose** are installed on your Linux box.
+
+### 2. Start the Container
+```bash
+cd /path/to/NetPatrol
+docker compose up -d --build
+```
+
+### 3. Why `network_mode: host` and `privileged: true`?
+Network scanners require direct access to the host's network interface to "see" other devices on your LAN. These settings ensure `nmap` has the authority it needs to capture hardware manufacturers and MAC addresses.
+
+---
+
 ## 📦 Persistence
 All data—including custom device names, scan history, and subnet configurations—is stored in a local **SQLite** database (`prisma/dev.db`). It remains persistent between program restarts.
