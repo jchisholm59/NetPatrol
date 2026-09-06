@@ -75,6 +75,43 @@ The dashboard supports three high-contrast themes accessible from the header:
 - **LIGHT**: Optimized for bright environments.
 - **SLATE**: A balanced grey theme for high visibility.
 
+## 🐧 Linux Deployment (PM2 & Node.js)
+
+### 1. Install Node.js & NPM
+If your Linux host doesn't have Node.js yet, the recommended way is using the NodeSource repository:
+
+```bash
+# Example for Ubuntu/Debian
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt-get install -y nodejs
+```
+
+### 2. Install PM2
+```bash
+sudo npm install -g pm2
+```
+
+### 3. Deploy & Run
+```bash
+cd /path/to/NetPatrol
+npm install
+npm run build
+pm2 start npm --name "netpatrol" -- start
+```
+
+### 4. Enable Auto-Start on Boot
+```bash
+pm2 startup
+# (Copy and run the command printed by the terminal)
+pm2 save
+```
+
+### 💡 Linux Pro-Tip (Permissions)
+To ensure `nmap` can discover hardware manufacturers without running the whole app as root:
+```bash
+sudo chmod u+s /usr/bin/nmap
+```
+
 ---
 
 ## 📦 Persistence
