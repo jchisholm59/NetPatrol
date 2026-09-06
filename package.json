@@ -1,0 +1,45 @@
+{
+  "name": "netpatrol",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 8765",
+    "build": "next build",
+    "start": "next start -p 8765",
+    "lint": "next lint",
+    "postinstall": "prisma generate"
+  },
+  "dependencies": {
+    "@google/genai": "^2.21.0",
+    "@prisma/client": "^6.3.1",
+    "@slack/web-api": "^7.8.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
+    "dotenv": "^16.4.7",
+    "getmac": "^6.6.0",
+    "lucide-react": "^0.474.0",
+    "next": "latest",
+    "node-cron": "^3.0.3",
+    "node-nmap": "^4.0.0",
+    "nodemailer": "^6.10.0",
+    "oui": "^13.3.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwind-merge": "^3.0.1",
+    "tailwindcss-animate": "^1.0.7",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.17",
+    "@types/node-cron": "^3.0.11",
+    "@types/nodemailer": "^6.4.17",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.5.1",
+    "prisma": "^6.3.1",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.3"
+  }
+}

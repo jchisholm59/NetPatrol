@@ -1,0 +1,46 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Subnet {
+  id          String    @id @default(cuid())
+  mask        String    @unique
+  name        String?
+  scanPeriod  Int       @default(3600)
+  lastScanned DateTime?
+  createdAt   DateTime  @default(now())
+  devices     Device[]
+}
+
+model Device {
+  id              String        @id @default(cuid())
+  ip              String
+  mac             String?
+  vendor          String?
+  customName      String?
+  lastStatus      String        @default("up")
+  firstDiscovered DateTime      @default(now())
+  lastSeen        DateTime      @default(now())
+  subnetId        String
+  alertEnabled    Boolean       @default(false)
+  gmailAlert      Boolean       @default(true)
+  slackAlert      Boolean       @default(true)
+  downCount       Int           @default(0)
+  subnet          Subnet        @relation(fields: [subnetId], references: [id], onDelete: Cascade)
+  history         ScanHistory[]
+
+  @@unique([ip, subnetId])
+}
+
+model ScanHistory {
+  id        String   @id @default(cuid())
+  deviceId  String
+  status    String
+  timestamp DateTime @default(now())
+  device    Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+}

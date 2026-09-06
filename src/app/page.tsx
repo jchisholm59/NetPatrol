@@ -1,0 +1,537 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import {
+  Network,
+  Search,
+  Activity,
+  AlertCircle,
+  Settings,
+  Info,
+  Plus,
+  RefreshCw,
+  Cpu,
+  Monitor
+} from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
+
+export default function Dashboard() {
+  const [subnets, setSubnets] = useState<any[]>([]);
+  const [activeSubnet, setActiveSubnet] = useState<any>(null);
+  const [devices, setDevices] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [probingIp, setProbingIp] = useState<string | null>(null);
+  const [summary, setSummary] = useState('');
+  const [probingDevice, setProbingDevice] = useState<any>(null);
+  const [sortBy, setSortBy] = useState<'ip' | 'name'>('ip');
+  const [theme, setTheme] = useState<'dark' | 'light' | 'slate'>('dark');
+
+  useEffect(() => {
+    fetchSubnets();
+  }, []);
+
+  useEffect(() => {
+    const html = document.documentElement;
+    html.classList.remove('dark', 'light', 'slate');
+    html.classList.add(theme);
+  }, [theme]);
+
+  useEffect(() => {
+    if (activeSubnet) {
+      console.log('Active subnet changed to:', activeSubnet.mask);
+      fetchDevices(activeSubnet.id);
+    }
+  }, [activeSubnet]);
+
+  const fetchSubnets = async () => {
+    try {
+      const res = await fetch('/api/subnets', { cache: 'no-store' });
+      if (!res.ok) throw new Error('Failed to fetch subnets');
+      const data = await res.json();
+      console.log('Fetched subnets from API:', data);
+      setSubnets(data);
+
+      // If we have subnets but none are active, pick the first one
+      if (data.length > 0) {
+        if (!activeSubnet || !data.find((s: any) => s.id === activeSubnet.id)) {
+          setActiveSubnet(data[0]);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Error loading subnets. Is the server running?');
+    }
+  };
+
+  const fetchDevices = async (subnetId: string) => {
+    setLoading(true);
+    const res = await fetch(`/api/devices?subnetId=${subnetId}`, { cache: 'no-store' });
+    const data = await res.json();
+    setDevices(data);
+    setLoading(false);
+  };
+
+  const handleScanNow = async () => {
+    if (!activeSubnet) return;
+    setScanning(true);
+    try {
+      const res = await fetch('/api/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subnetId: activeSubnet.id }),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        alert('Scan Error: ' + (error.error || 'Check server logs'));
+      }
+      await fetchDevices(activeSubnet.id);
+    } catch (e) {
+      console.error(e);
+      alert('Failed to trigger scan');
+    } finally {
+      setScanning(false);
+    }
+  };
+
+  const handleAddSubnet = async () => {
+    const mask = prompt('Enter Subnet Mask (e.g., 192.168.1.0/24)');
+    if (!mask) return;
+    const res = await fetch('/api/subnets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mask, name: 'New Subnet' }),
+    });
+    if (res.ok) {
+      const newSubnet = await res.json();
+      await fetchSubnets();
+      setActiveSubnet(newSubnet);
+    } else {
+      const error = await res.json();
+      alert(error.error || 'Failed to add subnet');
+    }
+  };
+
+  const handleAISummary = async () => {
+    if (!activeSubnet) return;
+    setLoading(true);
+    const res = await fetch(`/api/summary?subnetId=${activeSubnet.id}`);
+    const data = await res.json();
+    setSummary(data.summary);
+    setLoading(false);
+  };
+
+  const handleTestAlerts = async () => {
+    try {
+      const res = await fetch('/api/alerts/test', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.message);
+      } else {
+        alert('Test failed: ' + (data.error || 'Unknown error'));
+      }
+    } catch (e) {
+      alert('Failed to connect to alerting service.');
+    }
+  };
+
+  const handleProbe = async (ip: string) => {
+    console.log('Initiating deep probe for:', ip);
+    setProbingIp(ip);
+    try {
+      const res = await fetch('/api/probe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ip }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        console.log('Probe results received:', data);
+        setProbingDevice(data);
+      } else {
+        const err = await res.json();
+        console.error('Probe API error:', err);
+        alert(`Probe failed: ${err.error || 'Ensure device is reachable'}`);
+      }
+    } catch (e) {
+      console.error('Frontend probe error:', e);
+      alert('Network error during probe.');
+    } finally {
+      setProbingIp(null);
+    }
+  };
+
+  const handleUpdateDevice = async (id: string, updates: any) => {
+    await fetch('/api/devices', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, ...updates }),
+    });
+    if (activeSubnet) fetchDevices(activeSubnet.id);
+  };
+
+  const handleUpdateSubnet = async (id: string, updates: any) => {
+    await fetch('/api/subnets', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, ...updates }),
+    });
+    fetchSubnets();
+  };
+
+  const handleDeleteSubnet = async (id: string, mask: string) => {
+    if (!confirm(`Are you sure you want to delete the subnet ${mask}? This will remove all discovered devices and history.`)) return;
+
+    try {
+      const res = await fetch(`/api/subnets?id=${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setActiveSubnet(null);
+        await fetchSubnets();
+      } else {
+        alert('Failed to delete subnet.');
+      }
+    } catch (e) {
+      alert('Error deleting subnet.');
+    }
+  };
+
+  const sortedDevices = [...devices].sort((a, b) => {
+    if (sortBy === 'ip') {
+      // Simple IP comparison, could be improved with integer conversion
+      return a.ip.localeCompare(b.ip, undefined, { numeric: true });
+    }
+    return (a.customName || a.ip).localeCompare(b.customName || b.ip);
+  });
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">NetPatrol</h1>
+          <p className="text-muted-foreground">Network Monitoring & Analysis {subnets.length > 0 ? `(${subnets.length} subnets active)` : ''}</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex bg-muted rounded-lg p-1 border border-border">
+            {(['dark', 'light', 'slate'] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setTheme(t)}
+                className={`px-3 py-1.5 rounded-md text-xs font-bold uppercase transition-all ${
+                  theme === t
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={handleAddSubnet}
+            className="flex items-center gap-2 bg-secondary px-4 py-2 rounded-md hover:bg-secondary/80 transition font-bold"
+          >
+            <Plus size={18} /> Add Subnet
+          </button>
+          <button
+            onClick={handleScanNow}
+            disabled={scanning || !activeSubnet}
+            className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 disabled:opacity-50 transition"
+          >
+            {scanning ? <RefreshCw className="animate-spin" size={18} /> : <Search size={18} />}
+            Scan Now
+          </button>
+          <button
+            onClick={handleTestAlerts}
+            className="flex items-center gap-2 bg-muted text-muted-foreground px-4 py-2 rounded-md hover:bg-muted/80 transition"
+            title="Send test Slack and Gmail alerts"
+          >
+            <AlertCircle size={18} /> Test Alerts
+          </button>
+        </div>
+      </div>
+
+      {/* Subnet Tabs */}
+      <div className="flex flex-col gap-2 p-6 bg-card border-2 border-primary/20 rounded-xl shadow-inner">
+        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground opacity-70">Subnet Selectors</h3>
+        <div className="flex flex-wrap gap-4">
+          {subnets.length === 0 ? (
+            <div className="px-4 py-2 text-sm text-muted-foreground italic">No subnets found. Click "Add Subnet" above to begin.</div>
+          ) : subnets.map(s => (
+            <button
+              key={s.id}
+              onClick={() => {
+                console.log('User selected subnet:', s.mask);
+                setActiveSubnet(s);
+              }}
+              className={`group flex items-center gap-3 px-6 py-4 rounded-xl text-lg font-bold transition-all border-4 ${
+                activeSubnet?.id === s.id
+                  ? 'bg-primary text-primary-foreground border-primary shadow-xl -translate-y-1'
+                  : 'bg-muted/30 text-foreground border-transparent hover:border-primary/40 hover:bg-muted/50'
+              }`}
+            >
+              <div className={`p-2 rounded-lg ${activeSubnet?.id === s.id ? 'bg-primary-foreground/20' : 'bg-primary/10'}`}>
+                <Network size={24} />
+              </div>
+              <span>{s.mask}</span>
+            </button>
+          ))}
+        </div>
+
+        {activeSubnet && (
+          <div className="flex flex-wrap items-center gap-6 mt-4 pt-4 border-t border-border/50">
+            <div className="flex items-center gap-3 bg-muted/50 px-4 py-2 rounded-full border border-border">
+              <Settings size={16} className="text-muted-foreground" />
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Scan Cycle</span>
+              <select
+                value={activeSubnet.scanPeriod}
+                onChange={(e) => handleUpdateSubnet(activeSubnet.id, { scanPeriod: parseInt(e.target.value) })}
+                className="bg-transparent border-none text-sm font-bold focus:ring-0 cursor-pointer p-0"
+              >
+                <option value="60">Every 1 Minute</option>
+                <option value="300">Every 5 Minutes</option>
+                <option value="3600">Every 1 Hour</option>
+                <option value="86400">Daily</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+              <Activity size={14} />
+              Last Scan: {activeSubnet.lastScanned ? formatDistanceToNow(new Date(activeSubnet.lastScanned), { addSuffix: true }) : 'Never'}
+            </div>
+
+            <button
+              onClick={() => handleDeleteSubnet(activeSubnet.id, activeSubnet.mask)}
+              className="ml-auto text-[10px] font-black uppercase tracking-widest bg-yellow-400 text-black hover:bg-yellow-500 px-4 py-2 rounded-lg shadow-lg transition-all active:scale-95"
+            >
+              ⚠️ Delete Subnet
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Main Table */}
+        <div className="lg:col-span-3 space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <Network size={20} /> Discovered Devices
+            </h2>
+            <div className="flex gap-2 text-sm">
+              <span className="text-muted-foreground">Sort by:</span>
+              <button
+                onClick={() => setSortBy('ip')}
+                className={sortBy === 'ip' ? 'underline font-bold' : ''}
+              >IP</button>
+              <button
+                onClick={() => setSortBy('name')}
+                className={sortBy === 'name' ? 'underline font-bold' : ''}
+              >Name</button>
+            </div>
+          </div>
+
+          <div className="border border-border rounded-lg overflow-hidden bg-card">
+            <table className="w-full text-left">
+              <thead className="bg-muted/50 text-muted-foreground text-xs uppercase">
+                <tr>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Device</th>
+                  <th className="px-4 py-3">IP Address</th>
+                  <th className="px-4 py-3">MAC / Vendor</th>
+                  <th className="px-4 py-3">Last Seen</th>
+                  <th className="px-4 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {loading && devices.length === 0 ? (
+                  <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Discovering devices...</td></tr>
+                ) : sortedDevices.length === 0 ? (
+                  <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">No devices found. Trigger a scan.</td></tr>
+                ) : sortedDevices.map(d => (
+                  <tr key={d.id} className="hover:bg-muted/20 transition group">
+                    <td className="px-4 py-3">
+                      {d.lastStatus === 'up' ? (
+                        <div className="flex items-center gap-1.5 text-green-500">
+                          <Activity size={14} /> <span className="text-xs font-medium">Online</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 text-red-500">
+                          <AlertCircle size={14} /> <span className="text-xs font-medium">Down ({d.downCount})</span>
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <input
+                        defaultValue={d.customName || ''}
+                        onBlur={(e) => handleUpdateDevice(d.id, { customName: e.target.value })}
+                        placeholder="Assign name..."
+                        className="bg-transparent border-none focus:ring-1 focus:ring-primary rounded px-1 -ml-1 w-full font-medium placeholder:font-normal placeholder:text-muted-foreground/50"
+                      />
+                      <div className="text-xs text-muted-foreground">{d.hostname || 'No hostname'}</div>
+                    </td>
+                    <td className="px-4 py-3 font-mono text-sm">{d.ip}</td>
+                    <td className="px-4 py-3">
+                      <div className="text-sm font-mono">{d.mac || '??:??:??:??:??:??'}</div>
+                      <div className="text-xs text-muted-foreground truncate max-w-[150px]">{d.vendor || 'Unknown Manufacturer'}</div>
+                    </td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground">
+                      {formatDistanceToNow(new Date(d.lastSeen), { addSuffix: true })}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-3">
+                        <div className="flex items-center gap-1 bg-muted/50 p-1 rounded-md border border-border">
+                          <button
+                            onClick={() => handleUpdateDevice(d.id, { gmailAlert: !d.gmailAlert })}
+                            className={`p-1 rounded text-[10px] font-bold uppercase transition-colors ${d.gmailAlert ? 'bg-red-500/20 text-red-500' : 'text-muted-foreground opacity-50'}`}
+                            title="Toggle Gmail Alert"
+                          >
+                            Gmail
+                          </button>
+                          <button
+                            onClick={() => handleUpdateDevice(d.id, { slackAlert: !d.slackAlert })}
+                            className={`p-1 rounded text-[10px] font-bold uppercase transition-colors ${d.slackAlert ? 'bg-blue-500/20 text-blue-500' : 'text-muted-foreground opacity-50'}`}
+                            title="Toggle Slack Alert"
+                          >
+                            Slack
+                          </button>
+                        </div>
+                        <button
+                          onClick={() => handleUpdateDevice(d.id, { alertEnabled: !d.alertEnabled })}
+                          className={`p-2 rounded-full transition ${d.alertEnabled ? 'text-yellow-500 bg-yellow-500/10' : 'text-muted-foreground hover:bg-muted'}`}
+                          title={d.alertEnabled ? 'Alerts Enabled' : 'Enable Alerts'}
+                        >
+                          <AlertCircle size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleProbe(d.ip)}
+                          disabled={!!probingIp}
+                          className={`p-2 rounded-full transition ${probingIp === d.ip ? 'bg-primary text-primary-foreground animate-pulse' : 'hover:bg-muted text-muted-foreground'}`}
+                          title={probingIp === d.ip ? 'Probing...' : 'Deep Probe'}
+                        >
+                          {probingIp === d.ip ? <RefreshCw className="animate-spin" size={16} /> : <Info size={16} />}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Sidebar / AI Summary */}
+        <div className="space-y-6">
+          <div className="bg-card border border-border rounded-lg p-4 space-y-4">
+            <h3 className="font-semibold flex items-center gap-2">
+              <Cpu size={18} /> AI Network Insight
+            </h3>
+            <div className="text-sm text-muted-foreground min-h-[100px] leading-relaxed">
+              {summary ? summary : "Click below to generate an AI summary of your current network status."}
+            </div>
+            <button
+              onClick={handleAISummary}
+              disabled={loading || !activeSubnet}
+              className="w-full bg-secondary py-2 rounded-md hover:bg-secondary/80 text-sm transition"
+            >
+              Generate Summary
+            </button>
+          </div>
+
+          <div className="bg-card border border-border rounded-lg p-4 space-y-4">
+            <h3 className="font-semibold flex items-center gap-2">
+              <Settings size={18} /> Subnet Stats
+            </h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-muted/30 p-3 rounded-lg text-center">
+                <div className="text-2xl font-bold">{devices.filter(d => d.lastStatus === 'up').length}</div>
+                <div className="text-[10px] uppercase text-muted-foreground">Online</div>
+              </div>
+              <div className="bg-muted/30 p-3 rounded-lg text-center">
+                <div className="text-2xl font-bold">{devices.filter(d => d.lastStatus === 'down').length}</div>
+                <div className="text-[10px] uppercase text-muted-foreground">Offline</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Probe Modal */}
+      {probingDevice && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+          <div className="bg-card border-2 border-primary/50 w-full max-w-2xl rounded-2xl shadow-[0_0_50px_-12px_rgba(0,0,0,0.5)] p-8 relative animate-in zoom-in-95 duration-200">
+            <button
+              onClick={() => setProbingDevice(null)}
+              className="absolute right-6 top-6 p-2 bg-muted hover:bg-destructive hover:text-destructive-foreground rounded-full transition-colors"
+              title="Close"
+            >
+              <Plus className="rotate-45" size={24} />
+            </button>
+
+            <div className="mb-8">
+              <div className="text-primary font-black uppercase tracking-tighter text-sm mb-1">Deep Probe Result</div>
+              <h2 className="text-4xl font-black tracking-tight flex items-center gap-3">
+                <Monitor className="text-primary" size={36} /> {probingDevice.ip}
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-2 gap-8 mb-8 bg-muted/30 p-6 rounded-xl border border-border">
+              <div>
+                <h4 className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest mb-1">Hostname</h4>
+                <div className="font-bold text-lg">{probingDevice.hostname || 'Unknown Device'}</div>
+              </div>
+              <div>
+                <h4 className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest mb-1">Manufacturer</h4>
+                <div className="font-bold text-lg text-primary">{probingDevice.vendor || 'Generic / Unlisted'}</div>
+              </div>
+            </div>
+
+            <div>
+              <div className="flex justify-between items-end mb-4">
+                <h4 className="text-sm font-black uppercase tracking-widest text-muted-foreground">Active Services</h4>
+                <span className="text-xs font-bold bg-primary/10 text-primary px-2 py-1 rounded">
+                  {probingDevice.ports?.length || 0} Ports Open
+                </span>
+              </div>
+
+              <div className="max-h-64 overflow-y-auto border border-border rounded-xl bg-background/50">
+                <table className="w-full text-left text-sm">
+                  <thead className="sticky top-0 bg-muted text-muted-foreground font-bold">
+                    <tr>
+                      <th className="px-6 py-3 border-b border-border">Port</th>
+                      <th className="px-6 py-3 border-b border-border">Service</th>
+                      <th className="px-6 py-3 border-b border-border">Protocol</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {probingDevice.ports?.length > 0 ? probingDevice.ports.map((p: any) => (
+                      <tr key={`${p.port}-${p.protocol}`} className="hover:bg-primary/5 transition-colors">
+                        <td className="px-6 py-4 font-mono font-bold text-primary">{p.port}</td>
+                        <td className="px-6 py-4 font-medium">{p.service || 'unknown'}</td>
+                        <td className="px-6 py-4 uppercase text-[10px] font-black opacity-60">{p.protocol}</td>
+                      </tr>
+                    )) : (
+                      <tr>
+                        <td colSpan={3} className="px-6 py-12 text-center text-muted-foreground italic">
+                          No open ports were detected during this scan.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="mt-8 flex justify-end">
+              <button
+                onClick={() => setProbingDevice(null)}
+                className="bg-primary text-primary-foreground px-8 py-3 rounded-xl font-bold hover:opacity-90 transition-all shadow-lg active:scale-95"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
