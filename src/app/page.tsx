@@ -98,18 +98,31 @@ export default function Dashboard() {
   const handleAddSubnet = async () => {
     const mask = prompt('Enter Subnet Mask (e.g., 192.168.1.0/24)');
     if (!mask) return;
+
+    console.log('Attempting to add subnet:', mask);
     const res = await fetch('/api/subnets', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ mask, name: 'New Subnet' }),
     });
+
     if (res.ok) {
       const newSubnet = await res.json();
+      console.log('Subnet added successfully:', newSubnet);
       await fetchSubnets();
       setActiveSubnet(newSubnet);
     } else {
       const error = await res.json();
-      alert(error.error || 'Failed to add subnet');
+      console.error('Subnet addition failed:', error);
+
+      if (error.error?.includes('already exists')) {
+        // If it already exists, let's try to find it in the list and select it
+        alert('This subnet is already in the database. Selecting it now...');
+        await fetchSubnets();
+        // The selection will happen automatically in fetchSubnets logic or manually here
+      } else {
+        alert(error.error || 'Failed to add subnet');
+      }
     }
   };
 
