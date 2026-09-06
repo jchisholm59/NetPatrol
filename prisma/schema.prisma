@@ -28,8 +28,8 @@ model Device {
   lastSeen        DateTime      @default(now())
   subnetId        String
   alertEnabled    Boolean       @default(false)
-  gmailAlert      Boolean       @default(true)
-  slackAlert      Boolean       @default(true)
+  gmailAlert      Boolean       @default(false)
+  slackAlert      Boolean       @default(false)
   downCount       Int           @default(0)
   subnet          Subnet        @relation(fields: [subnetId], references: [id], onDelete: Cascade)
   history         ScanHistory[]

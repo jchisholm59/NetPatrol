@@ -61,13 +61,14 @@ NetPatrol includes a robust alerting system for Slack and Gmail.
    - **Yellow Bell**: Alerts are ENABLED.
    - **Grey Bell**: Alerts are DISABLED.
 3. **Select Channels**: Use the small **Gmail** and **Slack** buttons next to the bell icon to choose which channels should be used for that specific device.
-   - **Red "Gmail"**: Email alerts active.
-   - **Blue "Slack"**: Slack alerts active.
+   - **Grey "Gmail/Slack"**: Alerts for this channel are DISABLED (Default for new devices).
+   - **Red "Gmail" / Blue "Slack"**: Alerts for this channel are ACTIVE.
 4. **Test Your Setup**: Use the **Test Alerts** button in the top right header to send a verification message to both your Slack channel and Gmail inbox.
 
 ### Monitoring Logic:
 - **Device DOWN**: To prevent false alarms from network blips, an alert is sent only after a device is missing for **3 consecutive scans**.
 - **Device UP**: An "Online" alert is sent **immediately** the moment a previously down device is seen again.
+- **Silent by Default**: All newly discovered devices start with alerts **DISABLED**. You must manually click the bell and the desired channels (Gmail/Slack) to begin monitoring.
 
 ---
 
