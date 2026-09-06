@@ -47,13 +47,13 @@ export default function Dashboard() {
 
   const fetchSubnets = async () => {
     try {
-      const res = await fetch('/api/subnets', { cache: 'no-store' });
+      // Added timestamp to force bypass of all caches (browser and Next.js)
+      const res = await fetch(`/api/subnets?t=${Date.now()}`, { cache: 'no-store' });
       if (!res.ok) throw new Error('Failed to fetch subnets');
       const data = await res.json();
       console.log('Fetched subnets from API:', data);
       setSubnets(data);
 
-      // If we have subnets but none are active, pick the first one
       if (data.length > 0) {
         if (!activeSubnet || !data.find((s: any) => s.id === activeSubnet.id)) {
           setActiveSubnet(data[0]);
@@ -67,7 +67,7 @@ export default function Dashboard() {
 
   const fetchDevices = async (subnetId: string) => {
     setLoading(true);
-    const res = await fetch(`/api/devices?subnetId=${subnetId}`, { cache: 'no-store' });
+    const res = await fetch(`/api/devices?subnetId=${subnetId}&t=${Date.now()}`, { cache: 'no-store' });
     const data = await res.json();
     setDevices(data);
     setLoading(false);
