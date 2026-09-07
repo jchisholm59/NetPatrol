@@ -10,7 +10,7 @@ WORKDIR /app
 COPY package*.json ./
 COPY prisma ./prisma/
 
-# Install dependencies
+# Install dependencies (will trigger prisma generate)
 RUN npm install
 
 # Copy the rest of the source code
@@ -23,5 +23,6 @@ RUN npm run build
 ENV PORT=8765
 EXPOSE 8765
 
-# Start the app: Force Next.js to start on port 8765 explicitly
-CMD ["sh", "-c", "npx prisma db push && npx next start -p 8765"]
+# Start the app: ensure the DB is initialized before starting the server
+# Using --accept-data-loss to handle schema changes that require data cleanup
+CMD ["sh", "-c", "npx prisma db push --accept-data-loss && npx next start -p 8765"]
