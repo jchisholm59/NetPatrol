@@ -358,9 +358,9 @@ export default function Dashboard() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
         {/* Main Table */}
-        <div className="lg:col-span-3 space-y-4">
+        <div className="xl:col-span-4 space-y-4 min-w-0">
           <div className="flex justify-between items-center gap-4">
             <h2 className="text-xl font-semibold flex items-center gap-2 whitespace-nowrap">
               <Network size={20} /> Discovered Devices
@@ -401,16 +401,16 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="border border-border rounded-lg overflow-hidden bg-card">
-            <table className="w-full text-left">
+          <div className="border border-border rounded-lg overflow-x-auto bg-card">
+            <table className="w-full text-left min-w-[1000px]">
               <thead className="bg-muted/50 text-muted-foreground text-xs uppercase">
                 <tr>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Device</th>
-                  <th className="px-4 py-3">IP Address</th>
-                  <th className="px-4 py-3">MAC / Vendor</th>
-                  <th className="px-4 py-3">Last Seen</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
+                  <th className="px-3 py-3 w-[120px]">Status</th>
+                  <th className="px-3 py-3 w-[180px]">Device</th>
+                  <th className="px-3 py-3 w-[140px]">IP Address</th>
+                  <th className="px-3 py-3">MAC / Vendor</th>
+                  <th className="px-3 py-3 w-[120px]">Last Seen</th>
+                  <th className="px-3 py-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -429,7 +429,7 @@ export default function Dashboard() {
                           : 'hover:bg-muted/20'
                     }`}
                   >
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-3">
                       {d.isExcluded ? (
                         <div className="flex items-center gap-1.5 text-muted-foreground">
                           <ShieldOff size={14} /> <span className="text-xs font-medium uppercase tracking-tighter">Excluded</span>
@@ -444,7 +444,7 @@ export default function Dashboard() {
                         </div>
                       )}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-3">
                       <input
                         defaultValue={d.customName || ''}
                         onBlur={(e) => handleUpdateDevice(d.id, { customName: e.target.value })}
@@ -455,27 +455,27 @@ export default function Dashboard() {
                         {d.hostname || (d.customName ? "" : "No Hostname")}
                       </div>
                     </td>
-                    <td className="px-4 py-3 font-mono text-sm">{d.ip}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-3 font-mono text-sm">{d.ip}</td>
+                    <td className="px-3 py-3">
                       <div className="text-sm font-mono">{d.mac || '??:??:??:??:??:??'}</div>
-                      <div className="text-xs text-muted-foreground truncate max-w-[150px]">{d.vendor || 'Unknown Manufacturer'}</div>
+                      <div className="text-xs text-muted-foreground truncate max-w-[200px]">{d.vendor || 'Unknown Manufacturer'}</div>
                     </td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">
+                    <td className="px-3 py-3 text-xs text-muted-foreground">
                       {formatDistanceToNow(new Date(d.lastSeen), { addSuffix: true })}
                     </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-3">
+                    <td className="px-3 py-3 text-right">
+                      <div className="flex items-center justify-end gap-2">
                         <div className="flex items-center gap-1 bg-muted/50 p-1 rounded-md border border-border">
                           <button
                             onClick={() => handleUpdateDevice(d.id, { gmailAlert: !d.gmailAlert })}
-                            className={`p-1 rounded text-[10px] font-bold uppercase transition-colors ${d.gmailAlert ? 'bg-red-500/20 text-red-500' : 'text-muted-foreground opacity-50'}`}
+                            className={`p-1 rounded text-[9px] font-black uppercase transition-colors ${d.gmailAlert ? 'bg-red-500 text-white' : 'text-muted-foreground opacity-30'}`}
                             title="Toggle Gmail Alert"
                           >
                             Gmail
                           </button>
                           <button
                             onClick={() => handleUpdateDevice(d.id, { slackAlert: !d.slackAlert })}
-                            className={`p-1 rounded text-[10px] font-bold uppercase transition-colors ${d.slackAlert ? 'bg-blue-500/20 text-blue-500' : 'text-muted-foreground opacity-50'}`}
+                            className={`p-1 rounded text-[9px] font-black uppercase transition-colors ${d.slackAlert ? 'bg-blue-500 text-white' : 'text-muted-foreground opacity-30'}`}
                             title="Toggle Slack Alert"
                           >
                             Slack
@@ -483,32 +483,32 @@ export default function Dashboard() {
                         </div>
                         <button
                           onClick={() => handleUpdateDevice(d.id, { alertEnabled: !d.alertEnabled })}
-                          className={`p-2 rounded-full transition ${d.alertEnabled ? 'text-yellow-500 bg-yellow-500/10' : 'text-muted-foreground hover:bg-muted'}`}
+                          className={`p-1.5 rounded-lg transition ${d.alertEnabled ? 'text-yellow-400 bg-yellow-400/10' : 'text-muted-foreground hover:bg-muted'}`}
                           title={d.alertEnabled ? 'Alerts Enabled' : 'Enable Alerts'}
                         >
-                          <AlertCircle size={16} />
+                          <AlertCircle size={15} />
                         </button>
                         <button
                           onClick={() => handleUpdateDevice(d.id, { isExcluded: !d.isExcluded })}
-                          className={`p-2 rounded-full transition ${d.isExcluded ? 'text-primary bg-primary/20' : 'text-muted-foreground hover:bg-muted'}`}
+                          className={`p-1.5 rounded-lg transition ${d.isExcluded ? 'text-primary bg-primary/20' : 'text-muted-foreground hover:bg-muted'}`}
                           title={d.isExcluded ? 'Re-enable Scanning' : 'Exclude from Scans'}
                         >
-                          <ShieldOff size={16} />
+                          <ShieldOff size={15} />
                         </button>
                         <button
                           onClick={() => handleProbe(d.ip)}
                           disabled={!!probingIp}
-                          className={`p-2 rounded-full transition ${probingIp === d.ip ? 'bg-primary text-primary-foreground animate-pulse' : 'hover:bg-muted text-muted-foreground'}`}
+                          className={`p-1.5 rounded-lg transition ${probingIp === d.ip ? 'bg-primary text-primary-foreground animate-pulse' : 'hover:bg-muted text-muted-foreground'}`}
                           title={probingIp === d.ip ? 'Probing...' : 'Deep Probe'}
                         >
-                          {probingIp === d.ip ? <RefreshCw className="animate-spin" size={16} /> : <Info size={16} />}
+                          {probingIp === d.ip ? <RefreshCw className="animate-spin" size={15} /> : <Info size={15} />}
                         </button>
                         <button
                           onClick={() => handleDeleteDevice(d.id, d.ip)}
-                          className="p-2 hover:bg-destructive/10 text-muted-foreground hover:text-destructive rounded-full transition"
+                          className="p-1.5 hover:bg-destructive/10 text-muted-foreground hover:text-destructive rounded-lg transition"
                           title="Remove Device"
                         >
-                          <Trash2 size={16} />
+                          <Trash2 size={15} />
                         </button>
                       </div>
                     </td>
