@@ -4,6 +4,12 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
   title: 'NetPatrol | Network Scanner',
   description: 'Modern network monitor and AI analyzer',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'NetPatrol',
+  },
 };
 
 export default function RootLayout({

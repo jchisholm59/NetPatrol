@@ -13,26 +13,32 @@ export async function POST(request: Request) {
     const discovered = await scanSubnet(subnet.mask);
     const now = new Date();
 
-    // Mark all current devices as potentially down
+    // Fetch existing devices to track status changes
     const existingDevices = await prisma.device.findMany({ where: { subnetId } });
-    const discoveredIps = new Set(discovered.map(d => d.ip));
 
+    // We identify devices by MAC. If a device has no MAC, we use its IP as a surrogate identifier.
+    const discoveredMacs = new Set(discovered.map(d => d.mac || d.ip));
+
+    // 1. Process all currently known devices in the DB
     for (const device of existingDevices) {
-      const isStillUp = discoveredIps.has(device.ip);
+      const idenfitier = device.mac; // This is our unique key
+      const foundInScan = discovered.find(d => (d.mac || d.ip) === idenfitier);
 
-      if (isStillUp) {
-        const found = discovered.find(d => d.ip === device.ip);
+      if (foundInScan) {
+        // Device is UP
         await prisma.device.update({
           where: { id: device.id },
           data: {
+            ip: foundInScan.ip, // Update IP in case it changed (DHCP)
+            hostname: foundInScan.hostname || device.hostname,
             lastSeen: now,
             lastStatus: 'up',
             downCount: 0,
-            vendor: found?.vendor || device.vendor,
-            mac: found?.mac || device.mac,
+            vendor: foundInScan.vendor || device.vendor,
           }
         });
 
+        // If it was down, notify recovery
         if (device.lastStatus === 'down' && device.alertEnabled) {
           await notifyDeviceUp(device.customName || device.ip, device.ip, {
             gmail: device.gmailAlert,
@@ -40,6 +46,7 @@ export async function POST(request: Request) {
           });
         }
       } else {
+        // Device is missing from this scan
         const newDownCount = device.downCount + 1;
         await prisma.device.update({
           where: { id: device.id },
@@ -49,7 +56,7 @@ export async function POST(request: Request) {
           }
         });
 
-        // Simple threshold: alert after 3 scans down (adjustable)
+        // Alert threshold: missing for 3 scans
         if (newDownCount === 3 && device.alertEnabled) {
           await notifyDeviceDown(device.customName || device.ip, device.ip, newDownCount, {
             gmail: device.gmailAlert,
@@ -59,13 +66,15 @@ export async function POST(request: Request) {
       }
     }
 
-    // Add new devices
+    // 2. Add brand new devices found in this scan
     for (const d of discovered) {
-      if (!existingDevices.some(ed => ed.ip === d.ip)) {
+      const identifier = d.mac || d.ip;
+      if (!existingDevices.some(ed => ed.mac === identifier)) {
         await prisma.device.create({
           data: {
             ip: d.ip,
-            mac: d.mac,
+            mac: identifier,
+            hostname: d.hostname,
             vendor: d.vendor,
             subnetId: subnet.id,
             lastStatus: 'up',
@@ -82,8 +91,8 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ success: true, count: discovered.length });
-  } catch (error) {
-    console.error(error);
-    return NextResponse.json({ error: 'Scan failed' }, { status: 500 });
+  } catch (error: any) {
+    console.error('[Scan API] Error:', error);
+    return NextResponse.json({ error: 'Scan failed: ' + error.message }, { status: 500 });
   }
 }

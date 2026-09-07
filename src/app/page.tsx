@@ -27,7 +27,8 @@ export default function Dashboard() {
   const [summary, setSummary] = useState('');
   const [probingDevice, setProbingDevice] = useState<any>(null);
   const [sortBy, setSortBy] = useState<'ip' | 'name'>('ip');
-  const [theme, setTheme] = useState<'dark' | 'light' | 'slate'>('dark');
+  const [theme, setTheme] = useState<'dark' | 'light' | 'slate'>('slate');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     fetchSubnets();
@@ -234,6 +235,17 @@ export default function Dashboard() {
     return (a.customName || a.ip).localeCompare(b.customName || b.ip);
   });
 
+  const isMatch = (device: any) => {
+    if (!searchQuery) return false;
+    const q = searchQuery.toLowerCase();
+    return (
+      (device.customName?.toLowerCase().includes(q)) ||
+      (device.ip?.toLowerCase().includes(q)) ||
+      (device.mac?.toLowerCase().includes(q)) ||
+      (device.hostname?.toLowerCase().includes(q))
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -244,17 +256,21 @@ export default function Dashboard() {
         </div>
         <div className="flex items-center gap-3">
           <div className="flex bg-muted rounded-lg p-1 border border-border">
-            {(['dark', 'light', 'slate'] as const).map((t) => (
+            {[
+              { id: 'dark', label: 'Dark' },
+              { id: 'light', label: 'Light' },
+              { id: 'slate', label: 'Dark Slate Grey' }
+            ].map((t) => (
               <button
-                key={t}
-                onClick={() => setTheme(t)}
+                key={t.id}
+                onClick={() => setTheme(t.id as any)}
                 className={`px-3 py-1.5 rounded-md text-xs font-bold uppercase transition-all ${
-                  theme === t
+                  theme === t.id
                     ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                {t}
+                {t.label}
               </button>
             ))}
           </div>
@@ -344,10 +360,33 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Main Table */}
         <div className="lg:col-span-3 space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold flex items-center gap-2">
+          <div className="flex justify-between items-center gap-4">
+            <h2 className="text-xl font-semibold flex items-center gap-2 whitespace-nowrap">
               <Network size={20} /> Discovered Devices
             </h2>
+
+            {/* Search Input */}
+            <div className="relative flex-1 max-w-md group">
+              <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-muted-foreground group-focus-within:text-primary transition-colors">
+                <Search size={16} />
+              </div>
+              <input
+                type="text"
+                placeholder="Search by Name, IP, or MAC..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-muted/50 border border-border rounded-lg py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute inset-y-0 right-3 flex items-center text-muted-foreground hover:text-foreground"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
             <div className="flex gap-2 text-sm">
               <span className="text-muted-foreground">Sort by:</span>
               <button
@@ -379,7 +418,14 @@ export default function Dashboard() {
                 ) : sortedDevices.length === 0 ? (
                   <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">No devices found. Trigger a scan.</td></tr>
                 ) : sortedDevices.map(d => (
-                  <tr key={d.id} className="hover:bg-muted/20 transition group">
+                  <tr
+                    key={d.id}
+                    className={`transition-all group ${
+                      isMatch(d)
+                        ? 'bg-primary/20 border-y-2 border-primary/50'
+                        : 'hover:bg-muted/20'
+                    }`}
+                  >
                     <td className="px-4 py-3">
                       {d.lastStatus === 'up' ? (
                         <div className="flex items-center gap-1.5 text-green-500">
@@ -396,9 +442,11 @@ export default function Dashboard() {
                         defaultValue={d.customName || ''}
                         onBlur={(e) => handleUpdateDevice(d.id, { customName: e.target.value })}
                         placeholder="Assign name..."
-                        className="bg-transparent border-none focus:ring-1 focus:ring-primary rounded px-1 -ml-1 w-full font-medium placeholder:font-normal placeholder:text-muted-foreground/50"
+                        className="bg-transparent border-none focus:ring-1 focus:ring-primary rounded px-1 -ml-1 w-full text-[13px] font-bold placeholder:font-normal placeholder:text-muted-foreground/40"
                       />
-                      <div className="text-xs text-muted-foreground">{d.hostname || 'No hostname'}</div>
+                      <div className="text-[10px] uppercase tracking-tight text-muted-foreground/60">
+                        {d.hostname || (d.customName ? "" : "No Hostname")}
+                      </div>
                     </td>
                     <td className="px-4 py-3 font-mono text-sm">{d.ip}</td>
                     <td className="px-4 py-3">

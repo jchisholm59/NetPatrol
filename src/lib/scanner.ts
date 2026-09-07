@@ -61,30 +61,25 @@ export async function scanSubnet(range: string): Promise<DiscoveredDevice[]> {
   console.log(`[Scanner] Discovery scan on ${range}...`);
 
   try {
-    // We'll use the 'Normal' output format since the user confirmed it shows MACs manually.
     const { stdout } = await execAsync(`${nmapPath} -sn ${range}`);
 
     const results: DiscoveredDevice[] = [];
     const arpTable = getArpTable();
 
-    // Split by "Nmap scan report for"
     const hosts = stdout.split('Nmap scan report for ');
-    hosts.shift(); // Remove the first empty split
+    hosts.shift();
 
     for (const hostContent of hosts) {
-      // Extract IP (might be standalone or in parens if hostname exists)
       const lines = hostContent.split('\n');
       const firstLine = lines[0].trim();
       const ipInParens = firstLine.match(/\(([\d.]+)\)/);
       const ip = ipInParens ? ipInParens[1] : firstLine;
 
-      // Extract Hostname (if different from IP)
       let hostname = undefined;
       if (ipInParens) {
         hostname = firstLine.split(' (')[0];
       }
 
-      // Extract MAC and Vendor from the block
       let mac = undefined;
       let vendor = undefined;
 
@@ -97,7 +92,6 @@ export async function scanSubnet(range: string): Promise<DiscoveredDevice[]> {
         if (vendorMatch) vendor = vendorMatch[1];
       }
 
-      // Final fallbacks
       mac = mac || arpTable[ip];
 
       if (ip && ip !== '127.0.0.1') {
@@ -105,7 +99,6 @@ export async function scanSubnet(range: string): Promise<DiscoveredDevice[]> {
       }
     }
 
-    // If MAC found but no vendor, try API lookup for gaps
     const finalResults = await Promise.all(results.map(async (d) => {
       if (d.mac && !d.vendor) {
         d.vendor = await getVendorFromApi(d.mac);
@@ -125,7 +118,6 @@ export async function probeDevice(ip: string): Promise<DetailedDevice> {
   console.log(`[Scanner] Snappy probe on ${ip}...`);
 
   try {
-    // Using Grepable format for port parsing as it's cleaner for machine reading
     const { stdout } = await execAsync(`${nmapPath} -F -T4 --open -Pn -n --max-rtt-timeout 100ms -oG - ${ip}`);
 
     const portSection = stdout.match(/Ports: (.*)/);
@@ -147,10 +139,13 @@ export async function probeDevice(ip: string): Promise<DetailedDevice> {
     }
 
     const arpTable = getArpTable();
+    const mac = arpTable[ip];
+    const vendor = mac ? await getVendorFromApi(mac) : undefined;
 
     return {
       ip,
-      mac: arpTable[ip],
+      mac: mac,
+      vendor: vendor,
       ports
     };
   } catch (error) {

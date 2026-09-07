@@ -75,9 +75,9 @@ NetPatrol includes a robust alerting system for Slack and Gmail.
 
 ## 🎨 Themes
 The dashboard supports three high-contrast themes accessible from the header:
-- **DARK**: The classic stealth look.
+- **DARK SLATE GREY**: The default modern stealth look.
+- **DARK**: Pure high-contrast dark mode.
 - **LIGHT**: Optimized for bright environments.
-- **SLATE**: A balanced grey theme for high visibility.
 
 ## 🐧 Linux Deployment (PM2 & Node.js)
 
@@ -137,6 +137,16 @@ docker compose up -d --build
 
 ### 3. Why `network_mode: host` and `privileged: true`?
 Network scanners require direct access to the host's network interface to "see" other devices on your LAN. These settings ensure `nmap` has the authority it needs to capture hardware manufacturers and MAC addresses.
+
+## 📱 Mobile App (PWA)
+
+NetPatrol is designed as a **Progressive Web App**, meaning you can install it on your phone and use it like a native application without needing an App Store.
+
+### Installation Steps:
+1.  **iOS (Safari)**: Open the dashboard URL, tap the **Share icon**, and select **"Add to Home Screen."**
+2.  **Android (Chrome)**: Open the dashboard URL, tap the **Menu (three dots)**, and select **"Install App"** or **"Add to Home Screen."**
+
+The app will then appear on your home screen with its own icon and will open in full-screen "native" mode.
 
 ---
 

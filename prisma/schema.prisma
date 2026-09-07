@@ -20,7 +20,8 @@ model Subnet {
 model Device {
   id              String        @id @default(cuid())
   ip              String
-  mac             String?
+  mac             String        // Hardware Address as primary identifier
+  hostname        String?       // Actual network hostname
   vendor          String?
   customName      String?
   lastStatus      String        @default("up")
@@ -34,7 +35,7 @@ model Device {
   subnet          Subnet        @relation(fields: [subnetId], references: [id], onDelete: Cascade)
   history         ScanHistory[]
 
-  @@unique([ip, subnetId])
+  @@unique([mac, subnetId])
 }
 
 model ScanHistory {
