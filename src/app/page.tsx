@@ -554,7 +554,7 @@ export default function Dashboard() {
               <Settings size={20} className="text-primary" /> Network Health
             </h3>
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-green-500/5 border border-green-500/20 p-4 rounded-xl text-center">
+              <div className="bg-green-50/5 border border-green-500/20 p-4 rounded-xl text-center">
                 <div className="text-3xl font-black text-green-500">{devices.filter(d => d.lastStatus === 'up').length}</div>
                 <div className="text-[10px] font-black uppercase tracking-widest text-green-500/70">Online</div>
               </div>
@@ -573,12 +573,6 @@ export default function Dashboard() {
                   className="bg-primary h-full transition-all duration-1000"
                   style={{ width: `${(devices.filter(d => d.lastStatus === 'up').length / (devices.length || 1)) * 100}%` }}
                 />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-                <div className="text-[10px] uppercase text-muted-foreground">Offline</div>
               </div>
             </div>
           </div>
