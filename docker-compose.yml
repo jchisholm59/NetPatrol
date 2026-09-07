@@ -10,6 +10,7 @@ services:
       # Force the container to use its internal volume path
       - DATABASE_URL=file:/app/data/dev.db
       - PORT=8765
+      - NEXT_TELEMETRY_DISABLED=1
     volumes:
       - netpatrol_data:/app/data
     env_file:
