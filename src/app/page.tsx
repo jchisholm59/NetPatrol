@@ -358,16 +358,16 @@ export default function Dashboard() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
-        {/* Main Table */}
-        <div className="xl:col-span-4 space-y-4 min-w-0">
-          <div className="flex justify-between items-center gap-4">
+      <div className="space-y-6">
+        {/* Main Table Area */}
+        <div className="space-y-4 min-w-0">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <h2 className="text-xl font-semibold flex items-center gap-2 whitespace-nowrap">
               <Network size={20} /> Discovered Devices
             </h2>
 
             {/* Search Input */}
-            <div className="relative flex-1 max-w-md group">
+            <div className="relative w-full md:flex-1 md:max-w-md group">
               <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-muted-foreground group-focus-within:text-primary transition-colors">
                 <Search size={16} />
               </div>
@@ -388,166 +388,196 @@ export default function Dashboard() {
               )}
             </div>
 
-            <div className="flex gap-2 text-sm">
-              <span className="text-muted-foreground">Sort by:</span>
-              <button
-                onClick={() => setSortBy('ip')}
-                className={sortBy === 'ip' ? 'underline font-bold' : ''}
-              >IP</button>
-              <button
-                onClick={() => setSortBy('name')}
-                className={sortBy === 'name' ? 'underline font-bold' : ''}
-              >Name</button>
+            <div className="flex gap-4 text-sm items-center">
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground">Sort:</span>
+                <button
+                  onClick={() => setSortBy('ip')}
+                  className={`px-2 py-1 rounded ${sortBy === 'ip' ? 'bg-primary/20 text-primary font-bold' : 'hover:bg-muted'}`}
+                >IP</button>
+                <button
+                  onClick={() => setSortBy('name')}
+                  className={`px-2 py-1 rounded ${sortBy === 'name' ? 'bg-primary/20 text-primary font-bold' : 'hover:bg-muted'}`}
+                >Name</button>
+              </div>
             </div>
           </div>
 
-          <div className="border border-border rounded-lg overflow-x-auto bg-card">
-            <table className="w-full text-left min-w-[1000px]">
-              <thead className="bg-muted/50 text-muted-foreground text-xs uppercase">
-                <tr>
-                  <th className="px-3 py-3 w-[120px]">Status</th>
-                  <th className="px-3 py-3 w-[180px]">Device</th>
-                  <th className="px-3 py-3 w-[140px]">IP Address</th>
-                  <th className="px-3 py-3">MAC / Vendor</th>
-                  <th className="px-3 py-3 w-[120px]">Last Seen</th>
-                  <th className="px-3 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {loading && devices.length === 0 ? (
-                  <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Discovering devices...</td></tr>
-                ) : sortedDevices.length === 0 ? (
-                  <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">No devices found. Trigger a scan.</td></tr>
-                ) : sortedDevices.map(d => (
-                  <tr
-                    key={d.id}
-                    className={`transition-all group ${
-                      d.isExcluded
-                        ? 'opacity-40 grayscale'
-                        : isMatch(d)
-                          ? 'bg-primary/20 border-y-2 border-primary/50'
-                          : 'hover:bg-muted/20'
-                    }`}
-                  >
-                    <td className="px-3 py-3">
-                      {d.isExcluded ? (
-                        <div className="flex items-center gap-1.5 text-muted-foreground">
-                          <ShieldOff size={14} /> <span className="text-xs font-medium uppercase tracking-tighter">Excluded</span>
-                        </div>
-                      ) : d.lastStatus === 'up' ? (
-                        <div className="flex items-center gap-1.5 text-green-500">
-                          <Activity size={14} /> <span className="text-xs font-medium">Online</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1.5 text-red-500">
-                          <AlertCircle size={14} /> <span className="text-xs font-medium">Down ({d.downCount})</span>
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-3 py-3">
-                      <input
-                        defaultValue={d.customName || ''}
-                        onBlur={(e) => handleUpdateDevice(d.id, { customName: e.target.value })}
-                        placeholder="Assign name..."
-                        className="bg-transparent border-none focus:ring-1 focus:ring-primary rounded px-1 -ml-1 w-full text-[13px] font-bold placeholder:font-normal placeholder:text-muted-foreground/40"
-                      />
-                      <div className="text-[10px] uppercase tracking-tight text-muted-foreground/60">
-                        {d.hostname || (d.customName ? "" : "No Hostname")}
-                      </div>
-                    </td>
-                    <td className="px-3 py-3 font-mono text-sm">{d.ip}</td>
-                    <td className="px-3 py-3">
-                      <div className="text-sm font-mono">{d.mac || '??:??:??:??:??:??'}</div>
-                      <div className="text-xs text-muted-foreground truncate max-w-[200px]">{d.vendor || 'Unknown Manufacturer'}</div>
-                    </td>
-                    <td className="px-3 py-3 text-xs text-muted-foreground">
-                      {formatDistanceToNow(new Date(d.lastSeen), { addSuffix: true })}
-                    </td>
-                    <td className="px-3 py-3 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <div className="flex items-center gap-1 bg-muted/50 p-1 rounded-md border border-border">
-                          <button
-                            onClick={() => handleUpdateDevice(d.id, { gmailAlert: !d.gmailAlert })}
-                            className={`p-1 rounded text-[9px] font-black uppercase transition-colors ${d.gmailAlert ? 'bg-red-500 text-white' : 'text-muted-foreground opacity-30'}`}
-                            title="Toggle Gmail Alert"
-                          >
-                            Gmail
-                          </button>
-                          <button
-                            onClick={() => handleUpdateDevice(d.id, { slackAlert: !d.slackAlert })}
-                            className={`p-1 rounded text-[9px] font-black uppercase transition-colors ${d.slackAlert ? 'bg-blue-500 text-white' : 'text-muted-foreground opacity-30'}`}
-                            title="Toggle Slack Alert"
-                          >
-                            Slack
-                          </button>
-                        </div>
-                        <button
-                          onClick={() => handleUpdateDevice(d.id, { alertEnabled: !d.alertEnabled })}
-                          className={`p-1.5 rounded-lg transition ${d.alertEnabled ? 'text-yellow-400 bg-yellow-400/10' : 'text-muted-foreground hover:bg-muted'}`}
-                          title={d.alertEnabled ? 'Alerts Enabled' : 'Enable Alerts'}
-                        >
-                          <AlertCircle size={15} />
-                        </button>
-                        <button
-                          onClick={() => handleUpdateDevice(d.id, { isExcluded: !d.isExcluded })}
-                          className={`p-1.5 rounded-lg transition ${d.isExcluded ? 'text-primary bg-primary/20' : 'text-muted-foreground hover:bg-muted'}`}
-                          title={d.isExcluded ? 'Re-enable Scanning' : 'Exclude from Scans'}
-                        >
-                          <ShieldOff size={15} />
-                        </button>
-                        <button
-                          onClick={() => handleProbe(d.ip)}
-                          disabled={!!probingIp}
-                          className={`p-1.5 rounded-lg transition ${probingIp === d.ip ? 'bg-primary text-primary-foreground animate-pulse' : 'hover:bg-muted text-muted-foreground'}`}
-                          title={probingIp === d.ip ? 'Probing...' : 'Deep Probe'}
-                        >
-                          {probingIp === d.ip ? <RefreshCw className="animate-spin" size={15} /> : <Info size={15} />}
-                        </button>
-                        <button
-                          onClick={() => handleDeleteDevice(d.id, d.ip)}
-                          className="p-1.5 hover:bg-destructive/10 text-muted-foreground hover:text-destructive rounded-lg transition"
-                          title="Remove Device"
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
-                    </td>
+          <div className="border border-border rounded-xl overflow-hidden bg-card shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead className="bg-muted/50 text-muted-foreground text-[10px] uppercase tracking-wider font-black">
+                  <tr>
+                    <th className="px-4 py-4 w-[110px]">Status</th>
+                    <th className="px-4 py-4 min-w-[200px]">Device Identification</th>
+                    <th className="px-4 py-4 w-[140px]">IP Address</th>
+                    <th className="px-4 py-4 min-w-[220px]">MAC / Vendor</th>
+                    <th className="px-4 py-4 w-[120px]">Last Seen</th>
+                    <th className="px-4 py-4 text-right pr-6">Management Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {loading && devices.length === 0 ? (
+                    <tr><td colSpan={6} className="px-4 py-12 text-center text-muted-foreground italic">Discovering your network...</td></tr>
+                  ) : sortedDevices.length === 0 ? (
+                    <tr><td colSpan={6} className="px-4 py-12 text-center text-muted-foreground italic">No devices found. Trigger a scan above.</td></tr>
+                  ) : sortedDevices.map(d => (
+                    <tr
+                      key={d.id}
+                      className={`transition-all group ${
+                        d.isExcluded
+                          ? 'bg-muted/5 opacity-50'
+                          : isMatch(d)
+                            ? 'bg-primary/10 ring-1 ring-inset ring-primary/30'
+                            : 'hover:bg-muted/20'
+                      }`}
+                    >
+                      <td className="px-4 py-4">
+                        {d.isExcluded ? (
+                          <div className="flex items-center gap-1.5 text-muted-foreground font-bold text-[10px] uppercase">
+                            <ShieldOff size={12} /> Excluded
+                          </div>
+                        ) : d.lastStatus === 'up' ? (
+                          <div className="flex items-center gap-1.5 text-green-500">
+                            <Activity size={14} className="animate-pulse" /> <span className="text-[11px] font-black uppercase tracking-tighter">Online</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 text-red-500">
+                            <AlertCircle size={14} /> <span className="text-[11px] font-black uppercase tracking-tighter">Down ({d.downCount})</span>
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-4">
+                        <input
+                          defaultValue={d.customName || ''}
+                          onBlur={(e) => handleUpdateDevice(d.id, { customName: e.target.value })}
+                          placeholder="Assign custom name..."
+                          className="bg-transparent border-none focus:ring-1 focus:ring-primary rounded px-1 -ml-1 w-full text-sm font-bold text-foreground placeholder:font-normal placeholder:text-muted-foreground/30"
+                        />
+                        <div className="text-[10px] uppercase tracking-tight text-muted-foreground/60 font-medium">
+                          {d.hostname || (d.customName ? "" : "No Hostname")}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 font-mono text-xs font-bold text-primary/80">{d.ip}</td>
+                      <td className="px-4 py-4">
+                        <div className="text-xs font-mono font-medium">{d.mac || '??:??:??:??:??:??'}</div>
+                        <div className="text-[10px] font-bold text-muted-foreground truncate max-w-[180px] uppercase tracking-wide">{d.vendor || 'Generic Device'}</div>
+                      </td>
+                      <td className="px-4 py-4 text-[11px] text-muted-foreground font-medium">
+                        {formatDistanceToNow(new Date(d.lastSeen), { addSuffix: true })}
+                      </td>
+                      <td className="px-4 py-4 text-right pr-6">
+                        <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center gap-1 bg-background/50 p-1 rounded-lg border border-border shadow-inner">
+                            <button
+                              onClick={() => handleUpdateDevice(d.id, { gmailAlert: !d.gmailAlert })}
+                              className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase transition-all ${d.gmailAlert ? 'bg-red-500 text-white shadow-sm' : 'text-muted-foreground opacity-40 hover:opacity-100'}`}
+                              title="Toggle Gmail Alert"
+                            >
+                              Gmail
+                            </button>
+                            <button
+                              onClick={() => handleUpdateDevice(d.id, { slackAlert: !d.slackAlert })}
+                              className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase transition-all ${d.slackAlert ? 'bg-blue-500 text-white shadow-sm' : 'text-muted-foreground opacity-40 hover:opacity-100'}`}
+                              title="Toggle Slack Alert"
+                            >
+                              Slack
+                            </button>
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => handleUpdateDevice(d.id, { alertEnabled: !d.alertEnabled })}
+                              className={`p-2 rounded-lg transition-all ${d.alertEnabled ? 'text-yellow-400 bg-yellow-400/10 border border-yellow-400/20 shadow-sm' : 'text-muted-foreground hover:bg-muted border border-transparent'}`}
+                              title={d.alertEnabled ? 'Monitoring Active' : 'Enable Monitoring'}
+                            >
+                              <AlertCircle size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleUpdateDevice(d.id, { isExcluded: !d.isExcluded })}
+                              className={`p-2 rounded-lg transition-all ${d.isExcluded ? 'text-primary bg-primary/10 border border-primary/20' : 'text-muted-foreground hover:bg-muted border border-transparent'}`}
+                              title={d.isExcluded ? 'Re-enable Scanning' : 'Exclude from Scans'}
+                            >
+                              <ShieldOff size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleProbe(d.ip)}
+                              disabled={!!probingIp}
+                              className={`p-2 rounded-lg transition-all ${probingIp === d.ip ? 'bg-primary text-primary-foreground animate-spin' : 'hover:bg-primary/20 text-primary border border-transparent hover:border-primary/30'}`}
+                              title={probingIp === d.ip ? 'Probing...' : 'Deep Probe Service'}
+                            >
+                              {probingIp === d.ip ? <RefreshCw size={16} /> : <Info size={16} />}
+                            </button>
+                            <button
+                              onClick={() => handleDeleteDevice(d.id, d.ip)}
+                              className="p-2 hover:bg-destructive/20 text-muted-foreground hover:text-destructive rounded-lg transition-all border border-transparent hover:border-destructive/30"
+                              title="Purge Device History"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
-        {/* Sidebar / AI Summary */}
-        <div className="space-y-6">
-          <div className="bg-card border border-border rounded-lg p-4 space-y-4">
-            <h3 className="font-semibold flex items-center gap-2">
-              <Cpu size={18} /> AI Network Insight
-            </h3>
-            <div className="text-sm text-muted-foreground min-h-[100px] leading-relaxed">
-              {summary ? summary : "Click below to generate an AI summary of your current network status."}
+        {/* Bottom AI & Stats Area */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-6 border-t border-border/50">
+          <div className="lg:col-span-2 bg-card border border-border rounded-xl p-6 space-y-4 shadow-sm relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+              <Cpu size={120} />
             </div>
-            <button
-              onClick={handleAISummary}
-              disabled={loading || !activeSubnet}
-              className="w-full bg-secondary py-2 rounded-md hover:bg-secondary/80 text-sm transition"
-            >
-              Generate Summary
-            </button>
+            <div className="flex justify-between items-center">
+              <h3 className="font-bold text-lg flex items-center gap-2">
+                <Cpu size={20} className="text-primary" /> AI Network Insight
+              </h3>
+              <button
+                onClick={handleAISummary}
+                disabled={loading || !activeSubnet}
+                className="bg-primary text-primary-foreground px-6 py-2 rounded-lg font-bold text-sm hover:opacity-90 transition-all shadow-md active:scale-95 disabled:opacity-50"
+              >
+                {loading ? "Analyzing..." : "Generate AI Summary"}
+              </button>
+            </div>
+            <div className="text-sm text-muted-foreground min-h-[80px] leading-relaxed bg-muted/20 p-4 rounded-lg border border-border/50 whitespace-pre-wrap">
+              {summary ? summary : "Click the button to generate a natural language analysis of your current network status."}
+            </div>
           </div>
 
-          <div className="bg-card border border-border rounded-lg p-4 space-y-4">
-            <h3 className="font-semibold flex items-center gap-2">
-              <Settings size={18} /> Subnet Stats
+          <div className="bg-card border border-border rounded-xl p-6 space-y-6 shadow-sm">
+            <h3 className="font-bold text-lg flex items-center gap-2">
+              <Settings size={20} className="text-primary" /> Network Health
             </h3>
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-muted/30 p-3 rounded-lg text-center">
-                <div className="text-2xl font-bold">{devices.filter(d => d.lastStatus === 'up').length}</div>
-                <div className="text-[10px] uppercase text-muted-foreground">Online</div>
+              <div className="bg-green-500/5 border border-green-500/20 p-4 rounded-xl text-center">
+                <div className="text-3xl font-black text-green-500">{devices.filter(d => d.lastStatus === 'up').length}</div>
+                <div className="text-[10px] font-black uppercase tracking-widest text-green-500/70">Online</div>
               </div>
-              <div className="bg-muted/30 p-3 rounded-lg text-center">
-                <div className="text-2xl font-bold">{devices.filter(d => d.lastStatus === 'down').length}</div>
+              <div className="bg-red-500/5 border border-red-500/20 p-4 rounded-xl text-center">
+                <div className="text-3xl font-black text-red-500">{devices.filter(d => d.lastStatus === 'down').length}</div>
+                <div className="text-[10px] font-black uppercase tracking-widest text-red-500/70">Offline</div>
+              </div>
+            </div>
+            <div className="bg-muted/30 p-4 rounded-xl">
+              <div className="flex justify-between text-xs font-bold mb-2">
+                <span className="text-muted-foreground uppercase tracking-wider">Total Scanned</span>
+                <span>{devices.length} Devices</span>
+              </div>
+              <div className="w-full bg-muted-foreground/10 h-2 rounded-full overflow-hidden">
+                <div
+                  className="bg-primary h-full transition-all duration-1000"
+                  style={{ width: `${(devices.filter(d => d.lastStatus === 'up').length / (devices.length || 1)) * 100}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
                 <div className="text-[10px] uppercase text-muted-foreground">Offline</div>
               </div>
             </div>
