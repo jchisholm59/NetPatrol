@@ -20,10 +20,10 @@ export async function GET(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const { id, customName, alertEnabled, gmailAlert, slackAlert } = await request.json();
+  const { id, customName, alertEnabled, gmailAlert, slackAlert, isExcluded } = await request.json();
   const device = await prisma.device.update({
     where: { id },
-    data: { customName, alertEnabled, gmailAlert, slackAlert },
+    data: { customName, alertEnabled, gmailAlert, slackAlert, isExcluded },
   });
   return NextResponse.json(device);
 }

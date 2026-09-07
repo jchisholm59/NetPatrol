@@ -56,12 +56,14 @@ async function getVendorFromApi(mac: string): Promise<string | undefined> {
   return undefined;
 }
 
-export async function scanSubnet(range: string): Promise<DiscoveredDevice[]> {
+export async function scanSubnet(range: string, excludeIps: string[] = []): Promise<DiscoveredDevice[]> {
   const nmapPath = process.env.NMAP_PATH || 'nmap';
-  console.log(`[Scanner] Discovery scan on ${range}...`);
+  console.log(`[Scanner] Discovery scan on ${range} (Excluding: ${excludeIps.join(',')})...`);
 
   try {
-    const { stdout } = await execAsync(`${nmapPath} -sn ${range}`);
+    const excludeFlag = excludeIps.length > 0 ? `--exclude ${excludeIps.join(',')}` : '';
+    // Reducing aggressiveness to -T3 to avoid knocking out sensitive routers
+    const { stdout } = await execAsync(`${nmapPath} -sn -T3 ${excludeFlag} ${range}`);
 
     const results: DiscoveredDevice[] = [];
     const arpTable = getArpTable();

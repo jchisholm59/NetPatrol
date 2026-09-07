@@ -31,6 +31,7 @@ model Device {
   alertEnabled    Boolean       @default(false)
   gmailAlert      Boolean       @default(false)
   slackAlert      Boolean       @default(false)
+  isExcluded      Boolean       @default(false)
   downCount       Int           @default(0)
   subnet          Subnet        @relation(fields: [subnetId], references: [id], onDelete: Cascade)
   history         ScanHistory[]

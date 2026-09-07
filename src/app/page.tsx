@@ -12,7 +12,8 @@ import {
   RefreshCw,
   Cpu,
   Monitor,
-  Trash2
+  Trash2,
+  ShieldOff
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -421,13 +422,19 @@ export default function Dashboard() {
                   <tr
                     key={d.id}
                     className={`transition-all group ${
-                      isMatch(d)
-                        ? 'bg-primary/20 border-y-2 border-primary/50'
-                        : 'hover:bg-muted/20'
+                      d.isExcluded
+                        ? 'opacity-40 grayscale'
+                        : isMatch(d)
+                          ? 'bg-primary/20 border-y-2 border-primary/50'
+                          : 'hover:bg-muted/20'
                     }`}
                   >
                     <td className="px-4 py-3">
-                      {d.lastStatus === 'up' ? (
+                      {d.isExcluded ? (
+                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                          <ShieldOff size={14} /> <span className="text-xs font-medium uppercase tracking-tighter">Excluded</span>
+                        </div>
+                      ) : d.lastStatus === 'up' ? (
                         <div className="flex items-center gap-1.5 text-green-500">
                           <Activity size={14} /> <span className="text-xs font-medium">Online</span>
                         </div>
@@ -480,6 +487,13 @@ export default function Dashboard() {
                           title={d.alertEnabled ? 'Alerts Enabled' : 'Enable Alerts'}
                         >
                           <AlertCircle size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleUpdateDevice(d.id, { isExcluded: !d.isExcluded })}
+                          className={`p-2 rounded-full transition ${d.isExcluded ? 'text-primary bg-primary/20' : 'text-muted-foreground hover:bg-muted'}`}
+                          title={d.isExcluded ? 'Re-enable Scanning' : 'Exclude from Scans'}
+                        >
+                          <ShieldOff size={16} />
                         </button>
                         <button
                           onClick={() => handleProbe(d.ip)}

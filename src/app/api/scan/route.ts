@@ -10,17 +10,23 @@ export async function POST(request: Request) {
   if (!subnet) return NextResponse.json({ error: 'Subnet not found' }, { status: 404 });
 
   try {
-    const discovered = await scanSubnet(subnet.mask);
+    // Fetch excluded devices for this subnet
+    const excludedDevices = await prisma.device.findMany({
+      where: { subnetId, isExcluded: true }
+    });
+    const excludeIps = excludedDevices.map(d => d.ip);
+
+    const discovered = await scanSubnet(subnet.mask, excludeIps);
     const now = new Date();
 
     // Fetch existing devices to track status changes
     const existingDevices = await prisma.device.findMany({ where: { subnetId } });
 
-    // We identify devices by MAC. If a device has no MAC, we use its IP as a surrogate identifier.
-    const discoveredMacs = new Set(discovered.map(d => d.mac || d.ip));
-
     // 1. Process all currently known devices in the DB
     for (const device of existingDevices) {
+      // If a device is excluded, we skip its status logic entirely
+      if (device.isExcluded) continue;
+
       const idenfitier = device.mac; // This is our unique key
       const foundInScan = discovered.find(d => (d.mac || d.ip) === idenfitier);
 
