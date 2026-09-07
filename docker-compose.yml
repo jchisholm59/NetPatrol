@@ -9,6 +9,7 @@ services:
     environment:
       # Force the container to use its internal volume path
       - DATABASE_URL=file:/app/data/dev.db
+      - PORT=8765
     volumes:
       - netpatrol_data:/app/data
     env_file:

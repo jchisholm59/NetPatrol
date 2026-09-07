@@ -20,6 +20,7 @@ COPY . .
 RUN npm run build
 
 # Port 8765
+ENV PORT=8765
 EXPOSE 8765
 
 # Start the app: ensure the DB is initialized before starting the server
