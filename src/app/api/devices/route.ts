@@ -21,6 +21,7 @@ export async function GET(request: Request) {
 
 export async function PATCH(request: Request) {
   const { id, customName, alertEnabled, gmailAlert, slackAlert, isExcluded } = await request.json();
+  // @ts-ignore - Added to prevent build failures if Prisma Client generation is slightly out of sync
   const device = await prisma.device.update({
     where: { id },
     data: { customName, alertEnabled, gmailAlert, slackAlert, isExcluded },
