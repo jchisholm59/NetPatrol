@@ -123,6 +123,7 @@ export async function scanSubnet(range: string, excludeIps: string[] = []): Prom
   }
 
   const arpTable = getArpTable();
+  console.log(`[Scanner] System ARP table contains ${Object.keys(arpTable).length} entries.`);
   const enrichedResults: DiscoveredDevice[] = [];
 
   // Sequential vendor lookup to avoid API rate limiting (Important for 30+ devices)

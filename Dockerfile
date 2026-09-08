@@ -1,8 +1,8 @@
 # Use a lightweight Node.js image
 FROM node:20-slim
 
-# Install nmap, ping, and clean up
-RUN apt-get update && apt-get install -y nmap iputils-ping && rm -rf /var/lib/apt/lists/*
+# Install nmap, ping, arp, and ip tools
+RUN apt-get update && apt-get install -y nmap iputils-ping net-tools iproute2 && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
