@@ -37,15 +37,15 @@ Access the dashboard at: [http://localhost:8765](http://localhost:8765)
 
 ### 📡 Network Discovery
 - **Subnet Tabs**: Add multiple subnets (e.g., `192.168.1.0/24`) and view them as independent pages.
-- **Fast Scanning**: Uses optimized Nmap flags for rapid host discovery.
-- **MAC & Vendor Detection**: Integrated ARP table fallback to identify hardware manufacturers even without root privileges.
+- **Quiet Scanning**: Uses a lightweight "Polite Ping" protocol for discovery instead of aggressive Nmap scans. This avoids triggering firewall blocks or overwhelming WiFi routers.
+- **MAC & Vendor Detection**: Integrated ARP table fallback and API lookups to identify hardware manufacturers.
 - **Device Management**: Remove devices that are no longer on the network using the **Trash** icon.
-- **Scan Exclusion**: Use the **Shield** icon to exclude specific devices (like routers or sensitive APs) from future scans. This is useful if a device is being "knocked out" or rate-limiting the scanner. Excluded devices are skipped entirely by the Nmap engine and their status is paused.
+- **Scan Exclusion**: Use the **Shield** icon to exclude specific devices from scans entirely.
 
 ### 🔍 Deep Probing (The Info Icon)
-- Clicking the **(i)** icon on any device triggers a "Snappy Probe."
-- This scans the top 1,024 privileged ports to identify active services (Web, SSH, DBs, etc.).
-- Optimized with strict timeouts to ensure you get results in seconds, not minutes.
+- **Targeted Nmap**: Nmap is used *only* when a manual Deep Probe is requested.
+- Clicking the **(i)** icon triggers a "Snappy Probe" of the top 1,024 privileged ports.
+- Optimized with strict timeouts for rapid results.
 
 ### 🤖 AI Network Insights
 - Uses **Gemini 2.0 Flash-Lite** to analyze your network state.
