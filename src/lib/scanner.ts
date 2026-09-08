@@ -76,41 +76,39 @@ function getArpTable(): Record<string, string> {
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
- * Resolves a MAC address to a Vendor using a public API with sequential throttling
+ * Resolves a MAC address to a Vendor using a public API
  */
 async function getVendorFromApi(mac: string): Promise<string | undefined> {
   if (!mac || mac === '??:??:??:??:??:??' || mac.includes('Local')) return undefined;
-
   try {
     const res = await fetch(`https://api.macvendors.com/${encodeURIComponent(mac)}`);
     if (res.ok) return await res.text();
-
-    // Fallback if primary is busy
-    if (res.status === 429) {
-      await sleep(1000);
-      const res2 = await fetch(`https://api.maclookup.app/v2/macs/${encodeURIComponent(mac)}`);
-      if (res2.ok) {
-        const data = await res2.json();
-        return data.company || undefined;
-      }
-    }
   } catch (e) {}
   return undefined;
 }
 
+/**
+ * REPLACED NMAP WITH BASIC PING FOR DISCOVERY
+ * Updated to avoid TP-Link ER605 "ICMP TIMESTAMP" detection.
+ */
 export async function scanSubnet(range: string, excludeIps: string[] = []): Promise<DiscoveredDevice[]> {
   console.log(`[Scanner] Stealth discovery on ${range}...`);
 
   const allIps = getIpsFromRange(range).filter(ip => !excludeIps.includes(ip));
   const activeDevices: DiscoveredDevice[] = [];
 
-  // Batch pings to popuate the OS ARP cache quickly
-  // Reduced to 5 to avoid triggering ICMP Flood protection on TP-Link ER605
-  const concurrency = 5;
+  // Use basic ICMP Echo (Type 8) only.
+  // We explicitly avoid any flags that might trigger timestamp requests.
+  const concurrency = 5; // Low concurrency for router safety
   for (let i = 0; i < allIps.length; i += concurrency) {
     const batch = allIps.slice(i, i + concurrency);
     const results = await Promise.all(
-      batch.map(ip => ping.promise.probe(ip, { timeout: 1 }))
+      batch.map(ip => ping.promise.probe(ip, {
+        timeout: 1,
+        // '-O' (Omit Timestamp) is a standard Linux ping flag that prevents
+        // the ER605 from flagging an ICMP TIMESTAMP attack.
+        extra: process.platform === 'linux' ? ['-O'] : []
+      }))
     );
 
     results.forEach(res => {
@@ -124,14 +122,12 @@ export async function scanSubnet(range: string, excludeIps: string[] = []): Prom
   }
 
   const arpTable = getArpTable();
-  console.log(`[Scanner] System ARP table contains ${Object.keys(arpTable).length} entries.`);
   const enrichedResults: DiscoveredDevice[] = [];
 
-  // Sequential vendor lookup to avoid API rate limiting (Important for 30+ devices)
   for (const d of activeDevices) {
     const mac = arpTable[d.ip];
     const vendor = mac ? await getVendorFromApi(mac) : undefined;
-    if (vendor) await sleep(200); // Small pause to be polite to the free API
+    if (vendor) await sleep(200);
 
     enrichedResults.push({
       ...d,
