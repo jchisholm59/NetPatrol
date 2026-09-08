@@ -149,6 +149,22 @@ NetPatrol is designed as a **Progressive Web App**, meaning you can install it o
 
 The app will then appear on your home screen with its own icon and will open in full-screen "native" mode.
 
+### 🛠️ Updating the Application
+Whenever you push changes from your local machine, run these commands on your Linux host to update:
+
+```bash
+cd /path/to/NetPatrol
+git stash              # Set aside local lockfile changes
+git pull origin main
+git stash pop          # (Optional) Bring back local .env if stashed
+npm install
+npx prisma db push
+npm run build
+pm2 restart netpatrol
+```
+
+*Note: If using Docker, simply run `docker compose up -d --build` after the `git pull`.*
+
 ---
 
 ## 📦 Persistence
