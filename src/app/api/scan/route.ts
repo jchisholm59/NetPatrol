@@ -73,9 +73,13 @@ export async function POST(request: Request) {
     }
 
     // 2. Add brand new devices found in this scan
+    // We use a Set to track identifiers we've already processed in this loop
+    const processedIdentifiers = new Set(existingDevices.map(ed => ed.mac));
+
     for (const d of discovered) {
       const identifier = d.mac || d.ip;
-      if (!existingDevices.some(ed => ed.mac === identifier)) {
+
+      if (!processedIdentifiers.has(identifier)) {
         await prisma.device.create({
           data: {
             ip: d.ip,
@@ -88,6 +92,7 @@ export async function POST(request: Request) {
             lastSeen: now,
           }
         });
+        processedIdentifiers.add(identifier);
       }
     }
 
