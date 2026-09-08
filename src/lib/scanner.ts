@@ -105,7 +105,8 @@ export async function scanSubnet(range: string, excludeIps: string[] = []): Prom
   const activeDevices: DiscoveredDevice[] = [];
 
   // Batch pings to popuate the OS ARP cache quickly
-  const concurrency = 25;
+  // Reduced to 5 to avoid triggering ICMP Flood protection on TP-Link ER605
+  const concurrency = 5;
   for (let i = 0; i < allIps.length; i += concurrency) {
     const batch = allIps.slice(i, i + concurrency);
     const results = await Promise.all(
