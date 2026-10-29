@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { scanSubnet } from '@/lib/scanner';
 import { notifyDeviceDown, notifyDeviceUp } from '@/lib/alerts';
+import ping from 'ping';
 
 export async function POST(request: Request) {
   const { subnetId } = await request.json();
@@ -22,6 +23,23 @@ export async function POST(request: Request) {
     // Fetch existing devices to track status changes
     const existingDevices = await prisma.device.findMany({ where: { subnetId } });
 
+    // The sweep sends one ping with a 1 s timeout, which devices that are slow to answer miss now and then
+    // (an ESP32 with Wi-Fi power saving, a busy router). Check known devices it missed again, more patiently,
+    // before calling them down.
+    const isFound = (device: { mac: string; ip: string }) =>
+      discovered.some(d => (d.mac && d.mac === device.mac) || (!d.mac && d.ip === device.ip));
+    const missed = existingDevices.filter(d => !d.isExcluded && !isFound(d));
+    const answeredRecheck = new Set<string>();
+    for (let i = 0; i < missed.length; i += 5) {
+      const batch = missed.slice(i, i + 5);
+      const results = await Promise.all(batch.map(d => ping.promise.probe(d.ip, {
+        timeout: 2,
+        min_reply: 3,
+        extra: process.platform === 'linux' ? ['-O'] : [],
+      })));
+      results.forEach((r, j) => { if (r.alive) answeredRecheck.add(batch[j].id); });
+    }
+
     // 1. Process all currently known devices in the DB
     for (const device of existingDevices) {
       // If a device is excluded, we skip its status logic entirely
@@ -32,7 +50,8 @@ export async function POST(request: Request) {
       // duplicate IP-keyed record isn't created.
       const foundInScan =
         discovered.find(d => d.mac && d.mac === device.mac) ||
-        discovered.find(d => !d.mac && d.ip === device.ip);
+        discovered.find(d => !d.mac && d.ip === device.ip) ||
+        (answeredRecheck.has(device.id) ? { ip: device.ip } as { ip: string; hostname?: string; vendor?: string } : undefined);
 
       if (foundInScan) {
         // Device is UP
